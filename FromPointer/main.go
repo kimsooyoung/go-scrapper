@@ -2,6 +2,12 @@ package main
 
 import "fmt"
 
+type person struct {
+	name    string
+	age     int
+	favFood []string
+}
+
 func main() {
 
 	// pointer
@@ -29,4 +35,7 @@ func main() {
 	}
 
 	// struct
+	kimFavFood := []string{"Meat", "Meat", "Meat"}
+	kim := person{name: "Kim", age: 25, favFood: kimFavFood}
+	fmt.Println(kim)
 }
