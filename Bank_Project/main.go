@@ -7,6 +7,12 @@ import (
 	"github.com/swimming/go-scrapper/Bank_Project/mydict"
 )
 
+func ExceptionHandle(err error) {
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
 func main() {
 	myAccount := accounts.NewAccount("Kim")
 	myAccount.Deposit(100)
@@ -31,18 +37,18 @@ func main() {
 
 	// Let's use this function with Type Method
 	addErr := dictionary.Add(key, value) // '' <= char "" <= string
-	if addErr != nil {
-		fmt.Println(addErr)
-	}
+	ExceptionHandle(addErr)
 
-	definition, searchErr := dictionary.Search(key) // '' <= char "" <= string
-	if searchErr != nil {
-		fmt.Println(searchErr)
-	}
+	definition, _ := dictionary.Search(key)
+	// ExceptionHandle(searchErr)
 	fmt.Println(key, "+", definition)
 
-	addErr2 := dictionary.Add(key, value) // '' <= char "" <= string
-	if addErr2 != nil {
-		fmt.Println(addErr2)
-	}
+	addErr2 := dictionary.Add(key, value)
+	ExceptionHandle(addErr2)
+
+	updateErr := dictionary.Update("Sex", "Male")
+	ExceptionHandle(updateErr)
+
+	deleteErr := dictionary.Delete("Location")
+	ExceptionHandle(deleteErr)
 }
