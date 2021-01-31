@@ -42,6 +42,30 @@ func multipleArgs(words ...string) {
 	fmt.Println(words)
 }
 
+// if-else
+// variable expression
+func canIDrink(age int) bool {
+
+	// you can assign variable in if expression
+	if koreanAge := age + 2; koreanAge > 18 {
+		return true
+	}
+	return false
+}
+
+func canIDrinkSwitch(age int) bool {
+
+	// switch expression, you can also use variable expression in here too.
+	switch koreanAge := age + 2; {
+	case koreanAge < 18:
+		return false
+	case koreanAge == 18:
+		return true
+	case koreanAge > 20:
+		return true
+	}
+}
+
 func main() {
 	const name string = "Swimming"
 	// name = "Changed" => invalid, const variable
@@ -65,4 +89,6 @@ func main() {
 
 	summation := superAdd(1, 2, 3, 4, 5, 6)
 	fmt.Println(summation)
+
+	fmt.Println(canIDrink(15))
 }
