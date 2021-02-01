@@ -15,13 +15,18 @@ func main() {
 	// Channel Example
 	// chan, Channel is interface btw main and Go Routine
 	c := make(chan bool)
-	people := [2]string{"Kim", "Park "}
+	people := []string{"Kim", "Park", "Suck", "Hwang", "Lee"}
+
 	for _, name := range people {
 		go isSexy(name, c)
 	}
-	fmt.Println(<-c)
-	fmt.Println(<-c)
-	// deadlock!!! Only twice times called
+
+	for i := 0; i < len(people); i++ {
+		fmt.Println(<-c)
+	}
+
+	// <- Once..?
+	// deadlock!!!
 	// fmt.Println(<-c)
 }
 
