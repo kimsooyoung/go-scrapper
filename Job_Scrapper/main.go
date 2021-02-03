@@ -4,17 +4,30 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/PuerkitoBio/goquery"
 )
 
-var baseURL = "https://kr.indeed.com/jobs?q=python&start=50"
+var baseURL = "https://kr.indeed.com/jobs?q=python"
 
 func main() {
-	getPages()
+	totalPages := getPages()
+	fmt.Println(totalPages)
+
+	for i := 0; i < totalPages; i++ {
+		getPage(i)
+	}
+}
+
+func getPage(page int) {
+	pageURL := baseURL + "&start=" + strconv.Itoa(page*10)
+	fmt.Println(pageURL)
 }
 
 func getPages() int {
+	pageNum := 0
+
 	res, err := http.Get(baseURL)
 	checkErr(err)
 	checkRes(res)
@@ -27,12 +40,12 @@ func getPages() int {
 	}
 
 	// Find the review items
-	doc.Find(".pagination").Each(func(i int, s *goquery.Selection) {
+	doc.Find(".pagination-list").Each(func(i int, s *goquery.Selection) {
 		// For each item found, get the band and title
-		band := s.Find("a").Text()
-		title := s.Find("i").Text()
-		fmt.Printf("Review %d: %s - %s\n", i, band, title)
+		pageNum = s.Find("li").Length() - 1
 	})
+
+	return pageNum
 }
 
 func checkErr(err error) {
