@@ -42,7 +42,19 @@ func getPages() int {
 	// Find the review items
 	doc.Find(".pagination-list").Each(func(i int, s *goquery.Selection) {
 		// For each item found, get the band and title
-		pageNum = s.Find("li").Length() - 1
+		paginations := s.Find("li").Text()
+		pageNum = s.Find("li").Length()
+		fmt.Println(paginations, pageNum)
+
+		curPage := string(paginations[0])
+
+		if curPage == "1" {
+			pageNum -= 1
+		} else if pageNum < 7 {
+			pageNum -= 1
+		} else {
+			pageNum -= 2
+		}
 	})
 
 	return pageNum
