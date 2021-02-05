@@ -1,10 +1,13 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -14,21 +17,62 @@ type extractedJob struct {
 	title    string
 	location string
 	salary   string
+	company  string
 	summary  string
 }
 
 var baseURL = "https://kr.indeed.com/jobs?q=python"
 
 func main() {
+	var jobs []extractedJob
+
 	totalPages := getPages()
 	fmt.Println(totalPages)
 
 	for i := 0; i < totalPages; i++ {
-		getPage(i)
+		extractJobs := getPage(i)
+		jobs = append(jobs, extractJobs...)
+	}
+
+	writeJobs(jobs)
+	fmt.Println("Done, len of jobs : ", len(jobs))
+}
+
+func writeJobs(jobs []extractedJob) {
+	file, err := os.Create("jobs.csv")
+	checkErr(err)
+
+	w := csv.NewWriter(file)
+	defer w.Flush()
+
+	headers := []string{
+		"id",
+		"title",
+		"location",
+		"salary",
+		"company",
+		"summary  ",
+	}
+
+	wErr := w.Write(headers)
+	checkErr(wErr)
+
+	for _, job := range jobs {
+		jobSlice := []string{
+			baseURL + "&vjk=" + job.id,
+			job.title,
+			job.location,
+			job.salary,
+			job.company,
+			job.summary}
+		jwErr := w.Write(jobSlice)
+		checkErr(jwErr)
 	}
 }
 
-func getPage(page int) {
+func getPage(page int) []extractedJob {
+	var jobs []extractedJob
+
 	pageURL := baseURL + "&start=" + strconv.Itoa(page*10)
 	fmt.Println(pageURL)
 
@@ -43,11 +87,32 @@ func getPage(page int) {
 
 	jobCard := doc.Find(".jobsearch-SerpJobCard")
 	jobCard.Each(func(i int, card *goquery.Selection) {
-		id, _ := card.Attr("data-jk")
-		title := card.Find(".title>a").Text()
-		location := card.Find(".sjcl>a").Text()
-		fmt.Println(id, title, location)
+		job := extractJob(card)
+		jobs = append(jobs, job)
 	})
+
+	return jobs
+}
+
+func extractJob(card *goquery.Selection) extractedJob {
+	id, _ := card.Attr("data-jk")
+	title := cleanString(card.Find(".title>a").Text())
+	location := cleanString(card.Find(".location").Text())
+	salary := cleanString(card.Find(".salaryText").Text())
+	company := cleanString(card.Find(".company").Text())
+	summary := cleanString(card.Find(".summary").Text())
+
+	return extractedJob{id: id,
+		title:    title,
+		location: location,
+		salary:   salary,
+		company:  company,
+		summary:  summary,
+	}
+}
+
+func cleanString(str string) string {
+	return strings.Join(strings.Fields(strings.TrimSpace(str)), " ")
 }
 
 func getPages() int {
