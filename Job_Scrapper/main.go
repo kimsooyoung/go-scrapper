@@ -1,3 +1,5 @@
+// referenced from : https://markhneedham.com/blog/2017/01/31/go-multi-threaded-writing-csv-file/
+
 package main
 
 import (
