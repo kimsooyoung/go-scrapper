@@ -1,15 +1,14 @@
 package main
 
 import (
-	"encoding/csv"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/swimming/go-scrapper/Job_Scrapper/parallelCSV"
 )
 
 type extractedJob struct {
@@ -25,53 +24,27 @@ var baseURL = "https://kr.indeed.com/jobs?q=python"
 
 func main() {
 	var jobs []extractedJob
+	c := make(chan []extractedJob)
 
 	totalPages := getPages()
 	fmt.Println(totalPages)
 
 	for i := 0; i < totalPages; i++ {
-		extractJobs := getPage(i)
-		jobs = append(jobs, extractJobs...)
+		go getPage(i, c)
+	}
+
+	for i := 0; i < totalPages; i++ {
+		extractedJobs := <-c
+		jobs = append(jobs, extractedJobs...)
 	}
 
 	writeJobs(jobs)
 	fmt.Println("Done, len of jobs : ", len(jobs))
 }
 
-func writeJobs(jobs []extractedJob) {
-	file, err := os.Create("jobs.csv")
-	checkErr(err)
-
-	w := csv.NewWriter(file)
-	defer w.Flush()
-
-	headers := []string{
-		"id",
-		"title",
-		"location",
-		"salary",
-		"company",
-		"summary  ",
-	}
-
-	wErr := w.Write(headers)
-	checkErr(wErr)
-
-	for _, job := range jobs {
-		jobSlice := []string{
-			baseURL + "&vjk=" + job.id,
-			job.title,
-			job.location,
-			job.salary,
-			job.company,
-			job.summary}
-		jwErr := w.Write(jobSlice)
-		checkErr(jwErr)
-	}
-}
-
-func getPage(page int) []extractedJob {
+func getPage(page int, mainC chan []extractedJob) {
 	var jobs []extractedJob
+	c := make(chan extractedJob)
 
 	pageURL := baseURL + "&start=" + strconv.Itoa(page*10)
 	fmt.Println(pageURL)
@@ -87,14 +60,18 @@ func getPage(page int) []extractedJob {
 
 	jobCard := doc.Find(".jobsearch-SerpJobCard")
 	jobCard.Each(func(i int, card *goquery.Selection) {
-		job := extractJob(card)
-		jobs = append(jobs, job)
+		go extractJob(card, c)
 	})
 
-	return jobs
+	for i := 0; i < jobCard.Length(); i++ {
+		job := <-c
+		jobs = append(jobs, job)
+	}
+
+	mainC <- jobs
 }
 
-func extractJob(card *goquery.Selection) extractedJob {
+func extractJob(card *goquery.Selection, c chan<- extractedJob) {
 	id, _ := card.Attr("data-jk")
 	title := cleanString(card.Find(".title>a").Text())
 	location := cleanString(card.Find(".location").Text())
@@ -102,7 +79,7 @@ func extractJob(card *goquery.Selection) extractedJob {
 	company := cleanString(card.Find(".company").Text())
 	summary := cleanString(card.Find(".summary").Text())
 
-	return extractedJob{id: id,
+	c <- extractedJob{id: id,
 		title:    title,
 		location: location,
 		salary:   salary,
@@ -132,7 +109,7 @@ func getPages() int {
 		// For each item found, get the band and title
 		paginations := s.Find("li").Text()
 		pageNum = s.Find("li").Length()
-		fmt.Println(paginations, pageNum)
+		// fmt.Println(paginations, pageNum)
 
 		curPage := string(paginations[0])
 
@@ -146,6 +123,47 @@ func getPages() int {
 	})
 
 	return pageNum
+}
+
+func writeJobs(jobs []extractedJob) {
+
+	w, err := parallelCSV.NewCsvWriter("jobs.csv")
+	checkErr(err)
+
+	defer w.Flush()
+
+	headers := []string{
+		"link",
+		"title",
+		"location",
+		"salary",
+		"company",
+		"summary  ",
+	}
+
+	w.Write(headers)
+
+	writeC := make(chan bool)
+
+	for _, job := range jobs {
+		go writeJobCards(job, w, writeC)
+	}
+
+	// fmt.Println(len(jobs))
+}
+
+func writeJobCards(job extractedJob, w *parallelCSV.CsvWriter, writeC chan bool) {
+	jobSlice := []string{
+		baseURL + "&vjk=" + job.id,
+		job.title,
+		job.location,
+		job.salary,
+		job.company,
+		job.summary,
+	}
+
+	w.Write(jobSlice)
+	writeC <- true
 }
 
 func checkErr(err error) {
