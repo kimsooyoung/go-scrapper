@@ -9,6 +9,14 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
+type extractedJob struct {
+	id       string
+	title    string
+	location string
+	salary   string
+	summary  string
+}
+
 var baseURL = "https://kr.indeed.com/jobs?q=python"
 
 func main() {
@@ -23,6 +31,23 @@ func main() {
 func getPage(page int) {
 	pageURL := baseURL + "&start=" + strconv.Itoa(page*10)
 	fmt.Println(pageURL)
+
+	res, err := http.Get(pageURL)
+	checkErr(err)
+	checkRes(res)
+
+	defer res.Body.Close()
+
+	doc, err := goquery.NewDocumentFromReader(res.Body)
+	checkErr(err)
+
+	jobCard := doc.Find(".jobsearch-SerpJobCard")
+	jobCard.Each(func(i int, card *goquery.Selection) {
+		id, _ := card.Attr("data-jk")
+		title := card.Find(".title>a").Text()
+		location := card.Find(".sjcl>a").Text()
+		fmt.Println(id, title, location)
+	})
 }
 
 func getPages() int {
@@ -35,9 +60,7 @@ func getPages() int {
 	defer res.Body.Close()
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
+	checkErr(err)
 
 	// Find the review items
 	doc.Find(".pagination-list").Each(func(i int, s *goquery.Selection) {
